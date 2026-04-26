@@ -114,11 +114,15 @@ export function tui(input: {
   headers?: RequestInit["headers"]
   events?: EventSource
 }) {
-  // promise to prevent immediate exit
-  // oxlint-disable-next-line no-async-promise-executor -- intentional: async executor used for sequential setup before resolve
-  return new Promise<void>(async (resolve) => {
+  return new Promise<void>((resolve, reject) => {
     const unguard = win32InstallCtrlCGuard()
-    win32DisableProcessedInput()
+    let renderer: Awaited<ReturnType<typeof createCliRenderer>> | undefined
+    const fail = (error: unknown) => {
+      renderer?.destroy()
+      renderer = undefined
+      unguard?.()
+      reject(error)
+    }
 
     const onExit = async () => {
       unguard?.()
@@ -129,73 +133,77 @@ export function tui(input: {
       await TuiPluginRuntime.dispose()
     }
 
-    const renderer = await createCliRenderer(rendererConfig(input.config))
-    const mode = (await renderer.waitForThemeMode(1000)) ?? "dark"
+    void (async () => {
+      win32DisableProcessedInput()
 
-    await render(() => {
-      return (
-        <ErrorBoundary
-          fallback={(error, reset) => (
-            <ErrorComponent error={error} reset={reset} onBeforeExit={onBeforeExit} onExit={onExit} mode={mode} />
-          )}
-        >
-          <ArgsProvider {...input.args}>
-            <ExitProvider onBeforeExit={onBeforeExit} onExit={onExit}>
-              <KVProvider>
-                <ToastProvider>
-                  <RouteProvider
-                    initialRoute={
-                      input.args.continue
-                        ? {
-                            type: "session",
-                            sessionID: "dummy",
-                          }
-                        : undefined
-                    }
-                  >
-                    <TuiConfigProvider config={input.config}>
-                      <SDKProvider
-                        url={input.url}
-                        directory={input.directory}
-                        fetch={input.fetch}
-                        headers={input.headers}
-                        events={input.events}
-                      >
-                        <ProjectProvider>
-                          <SyncProvider>
-                            <ThemeProvider mode={mode}>
-                              <LocalProvider>
-                                <KeybindProvider>
-                                  <PromptStashProvider>
-                                    <DialogProvider>
-                                      <CommandProvider>
-                                        <FrecencyProvider>
-                                          <PromptHistoryProvider>
-                                            <PromptRefProvider>
-                                              <EditorContextProvider>
-                                                <App onSnapshot={input.onSnapshot} />
-                                              </EditorContextProvider>
-                                            </PromptRefProvider>
-                                          </PromptHistoryProvider>
-                                        </FrecencyProvider>
-                                      </CommandProvider>
-                                    </DialogProvider>
-                                  </PromptStashProvider>
-                                </KeybindProvider>
-                              </LocalProvider>
-                            </ThemeProvider>
-                          </SyncProvider>
-                        </ProjectProvider>
-                      </SDKProvider>
-                    </TuiConfigProvider>
-                  </RouteProvider>
-                </ToastProvider>
-              </KVProvider>
-            </ExitProvider>
-          </ArgsProvider>
-        </ErrorBoundary>
-      )
-    }, renderer)
+      renderer = await createCliRenderer(rendererConfig(input.config))
+      const mode = (await renderer.waitForThemeMode(1000)) ?? "dark"
+
+      await render(() => {
+        return (
+          <ErrorBoundary
+            fallback={(error, reset) => (
+              <ErrorComponent error={error} reset={reset} onBeforeExit={onBeforeExit} onExit={onExit} mode={mode} />
+            )}
+          >
+            <ArgsProvider {...input.args}>
+              <ExitProvider onBeforeExit={onBeforeExit} onExit={onExit}>
+                <KVProvider>
+                  <ToastProvider>
+                    <RouteProvider
+                      initialRoute={
+                        input.args.continue
+                          ? {
+                              type: "session",
+                              sessionID: "dummy",
+                            }
+                          : undefined
+                      }
+                    >
+                      <TuiConfigProvider config={input.config}>
+                        <SDKProvider
+                          url={input.url}
+                          directory={input.directory}
+                          fetch={input.fetch}
+                          headers={input.headers}
+                          events={input.events}
+                        >
+                          <ProjectProvider>
+                            <SyncProvider>
+                              <ThemeProvider mode={mode}>
+                                <LocalProvider>
+                                  <KeybindProvider>
+                                    <PromptStashProvider>
+                                      <DialogProvider>
+                                        <CommandProvider>
+                                          <FrecencyProvider>
+                                            <PromptHistoryProvider>
+                                              <PromptRefProvider>
+                                                <EditorContextProvider>
+                                                  <App onSnapshot={input.onSnapshot} />
+                                                </EditorContextProvider>
+                                              </PromptRefProvider>
+                                            </PromptHistoryProvider>
+                                          </FrecencyProvider>
+                                        </CommandProvider>
+                                      </DialogProvider>
+                                    </PromptStashProvider>
+                                  </KeybindProvider>
+                                </LocalProvider>
+                              </ThemeProvider>
+                            </SyncProvider>
+                          </ProjectProvider>
+                        </SDKProvider>
+                      </TuiConfigProvider>
+                    </RouteProvider>
+                  </ToastProvider>
+                </KVProvider>
+              </ExitProvider>
+            </ArgsProvider>
+          </ErrorBoundary>
+        )
+      }, renderer)
+    })().catch(fail)
   })
 }
 

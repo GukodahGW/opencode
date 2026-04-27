@@ -114,6 +114,7 @@ const BUNDLED_PROVIDERS: Record<string, () => Promise<(opts: any) => BundledSDK>
   "gitlab-ai-provider": () => import("gitlab-ai-provider").then((m) => m.createGitLab),
   "@ai-sdk/github-copilot": () => import("./sdk/copilot/copilot-provider").then((m) => m.createOpenaiCompatible),
   "venice-ai-sdk-provider": () => import("venice-ai-sdk-provider").then((m) => m.createVenice),
+  "@opencode-ai/catgpt": () => import("@opencode-ai/catgpt").then((m) => m.createCatgpt),
 }
 
 type CustomModelLoader = (sdk: any, modelID: string, options?: Record<string, any>) => Promise<any>

@@ -1,5 +1,6 @@
 export { Config } from "@/config/config"
 export { Server } from "./server/server"
+export { PushRelay } from "./server/push-relay"
 export { bootstrap } from "./cli/bootstrap"
 export * as Log from "@opencode-ai/core/util/log"
 export { Database } from "@/storage/db"
